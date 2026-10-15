@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cloud CI/CD Demo App</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f3f6fb; margin: 0; color: #182230; }
+    main { max-width: 720px; margin: 10vh auto; padding: 32px; background: white; border-radius: 16px; box-shadow: 0 8px 30px #16243a12; }
+    h1 { margin-top: 0; color: #175cd3; }
+    .version { display: inline-block; background: #eaf2ff; color: #175cd3; padding: 8px 12px; border-radius: 999px; font-weight: bold; }
+    code { background: #f2f4f7; padding: 3px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Cloud CI/CD Demo App</h1>
+    <p>This academic demo shows how source code can move through an automated CI/CD pipeline.</p>
+    <p class="version">Application version: {{ version }}</p>
+    <p>Health check: <code>/health</code></p>
+    <p>Pipeline: GitHub → Jenkins → Docker Hub → Minikube / Kubernetes</p>
+  </main>
+</body>
+</html>
