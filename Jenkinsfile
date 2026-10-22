@@ -6,6 +6,7 @@ pipeline {
         DOCKERHUB_USERNAME    = "satwik05032006"
         DOCKERHUB_CREDENTIALS = "dockerhub-creds"
         PUBLIC_PORT           = "5000"
+        KUBECONFIG            = "/var/lib/jenkins/.kube/config"
     }
 
     stages {
@@ -129,8 +130,26 @@ pipeline {
                     kubectl get service cloud-cicd-lab
                     kubectl get endpoints cloud-cicd-lab
 
-                    echo "Testing /health endpoint locally..."
-                    curl -s -f http://localhost:5000/health || curl -s -f http://127.0.0.1:30080/health || echo "Health check verified."
+                    echo "Testing /health endpoint on persistent host ports..."
+                    HEALTH_OK=false
+                    for PORT in 5000 30080; do
+                        echo "Attempting health check on port $PORT..."
+                        if curl -s -f --connect-timeout 5 "http://127.0.0.1:${PORT}/health" > /tmp/health_resp.json; then
+                            echo "Port $PORT responded with HTTP 200:"
+                            cat /tmp/health_resp.json
+                            echo ""
+                            if grep -q '"status"' /tmp/health_resp.json && grep -q 'healthy' /tmp/health_resp.json; then
+                                HEALTH_OK=true
+                                break
+                            fi
+                        fi
+                    done
+
+                    if [ "$HEALTH_OK" != "true" ]; then
+                        echo "ERROR: Health check failed on all expected application endpoints!"
+                        exit 1
+                    fi
+                    echo "Health verification succeeded."
                 '''
             }
         }
@@ -142,10 +161,10 @@ pipeline {
                 try {
                     env.EC2_PUBLIC_IP = sh(
                         script: '''
-                            TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)
-                            IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || true)
+                            TOKEN=$(curl -s -m 2 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)
+                            IP=$(curl -s -m 2 -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || true)
                             if [ -z "$IP" ]; then
-                                IP=$(curl -s --connect-timeout 3 https://checkip.amazonaws.com 2>/dev/null || echo "YOUR-EC2-PUBLIC-IP")
+                                IP=$(curl -s -m 3 https://checkip.amazonaws.com 2>/dev/null || curl -s -m 3 https://ifconfig.me 2>/dev/null || echo "YOUR-EC2-PUBLIC-IP")
                             fi
                             echo "$IP" | tr -d '\n'
                         ''',
